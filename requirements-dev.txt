@@ -1,0 +1,7 @@
+-r requirements.in
+pytest-cov==7.1.0
+coverage==7.13.5
+flake8
+black
+mypy
+wemake-python-styleguide==1.6.1

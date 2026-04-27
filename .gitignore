@@ -1,1 +1,29 @@
-/.idea/
+# --- Python (Кэш) ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Виртуальное окружение ---
+.venv/
+venv/
+env/
+
+# --- Отчеты о тестировании ---
+htmlcov/
+.coverage
+.coverage.*
+.pytest_cache/
+
+# --- Переменные окружения (Секреты) ---
+.env
+.env.local
+
+# --- Медиа-файлы (Загрузки) ---
+static/media/*
+!static/media/.gitkeep
+
+# --- IDE и система ---
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
