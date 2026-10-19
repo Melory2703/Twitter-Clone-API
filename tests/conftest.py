@@ -149,3 +149,19 @@ async def tweet_id(db_session: AsyncSession, test_user: User):
     await db_session.commit()
     await db_session.refresh(tweet)
     return tweet.id
+
+
+@pytest.fixture
+def media_dir(tmp_path, monkeypatch):
+    """
+    Подменяет каталог загрузок на временный, чтобы тесты не оставляли файлы в static/media.
+
+    Args:
+        tmp_path (Path): Временный каталог pytest.
+        monkeypatch (MonkeyPatch): Инструмент подмены атрибутов.
+
+    Returns:
+        Path: Временный каталог для загруженных файлов.
+    """
+    monkeypatch.setattr("app.services.media_service.UPLOAD_DIR", tmp_path)
+    return tmp_path

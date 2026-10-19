@@ -3,11 +3,26 @@
 Содержит бизнес-правила и управляет транзакцией (commit).
 """
 
+import asyncio
 import uuid
+from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.config import UPLOAD_DIR
+from app.core.config import ALLOWED_MEDIA_TYPES, MAX_UPLOAD_SIZE, UPLOAD_DIR
+from app.core.exceptions import BadRequestError
 from app.models import Media
 from app.repositories.media_repository import MediaRepository
+
+# Расширение, если у загруженного файла его нет или оно выглядит подозрительно
+DEFAULT_EXTENSION = ".bin"
+MAX_EXTENSION_LENGTH = 10
+
+
+def _get_extension(filename: str | None) -> str:
+    """Возвращает расширение имени файла вместе с точкой или безопасное значение по умолчанию."""
+    suffix = Path(filename or "").suffix.lower()
+    if len(suffix) > MAX_EXTENSION_LENGTH or not suffix[1:].isalnum():
+        return DEFAULT_EXTENSION
+    return suffix
 
 
 class MediaService:
@@ -17,14 +32,22 @@ class MediaService:
         self.session = session
         self.medias = MediaRepository(session)
 
-    async def upload(self, filename: str | None, content: bytes) -> Media:
-        """Сохраняет файл в static/media под именем UUID и создаёт запись Media."""
+    async def upload(
+        self, filename: str | None, content: bytes, content_type: str | None
+    ) -> Media:
+        """Проверяет тип и размер, сохраняет файл в static/media под именем UUID и создаёт запись Media."""
+        mime_type = (content_type or "").split(";")[0].strip().lower()
+        if mime_type not in ALLOWED_MEDIA_TYPES:
+            allowed = ", ".join(sorted(ALLOWED_MEDIA_TYPES))
+            raise BadRequestError(f"Unsupported file type. Allowed types: {allowed}")
+        if len(content) > MAX_UPLOAD_SIZE:
+            limit_mb = MAX_UPLOAD_SIZE // (1024 * 1024)
+            raise BadRequestError(f"File is too large. Maximum size is {limit_mb} MB")
+
         UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-        filename = filename or "unknow.file"
-        file_ext = filename.split(".")[-1]
-        file_name = f"{uuid.uuid4()}.{file_ext}"
-        (UPLOAD_DIR / file_name).write_bytes(content)
+        file_name = f"{uuid.uuid4()}{_get_extension(filename)}"
+        await asyncio.to_thread((UPLOAD_DIR / file_name).write_bytes, content)
 
         media = await self.medias.create(f"/static/media/{file_name}")
         await self.session.commit()

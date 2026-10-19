@@ -3,6 +3,7 @@
 """
 
 from fastapi import APIRouter, Depends, UploadFile, File
+from app.core.config import MAX_UPLOAD_SIZE
 from app.models import User
 from app.api.deps import get_current_user, get_media_service
 from app.services.media_service import MediaService
@@ -28,5 +29,7 @@ async def upload_media(
     Returns:
         dict: JSON-ответ, содержащий статус операции и ID созданного медиа-ресурса.
     """
-    media = await media_service.upload(file.filename, await file.read())
+    # Читаем на один байт больше лимита: этого достаточно, чтобы сервис отклонил большой файл
+    content = await file.read(MAX_UPLOAD_SIZE + 1)
+    media = await media_service.upload(file.filename, content, file.content_type)
     return {"result": True, "media_id": media.id}
