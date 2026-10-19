@@ -23,14 +23,12 @@ async def seed_data():
     print("Начинаем процесс наполнения базы...")
     async with async_session() as session:
         try:
-            # 1. Очистка базы данных (удаление старых данных и сброс счетчиков ID)
             await session.execute(
                 text(
                     "TRUNCATE users, tweets, followers, likes, medias RESTART IDENTITY CASCADE;"
                 )
             )
 
-            # 2. Создание объектов пользователей
             user_ivan = User(name="Ivan", api_key="test")
             user_maria = User(name="Maria", api_key="dev")
             user_petr = User(name="Petr", api_key="petr_key")
@@ -38,10 +36,8 @@ async def seed_data():
 
             session.add_all([user_ivan, user_maria, user_petr, user_elena])
 
-            # Предварительное сохранение для получения ID пользователей
             await session.flush()
 
-            # 3. Создание объектов твитов
             tweet_ivan = Tweet(
                 content="Привет, это первый твит Ивана!", author_id=user_ivan.id
             )
@@ -51,11 +47,8 @@ async def seed_data():
 
             session.add_all([tweet_ivan, tweet_maria, tweet_petr, tweet_elena])
 
-            # Предварительное сохранение для получения ID твитов
             await session.flush()
 
-            # 4. Создание подписок (через прямой insert в ассоциативную таблицу followers)
-            # Иван подписывается на Марию и Петра; Мария подписывается на Ивана
             await session.execute(
                 insert(followers).values(
                     [
@@ -66,8 +59,6 @@ async def seed_data():
                 )
             )
 
-            # 5. Добавление лайков (через прямой insert в таблицу likes)
-            # Лайки для твитов Марии и Петра
             await session.execute(
                 insert(likes).values(
                     [
@@ -78,16 +69,13 @@ async def seed_data():
                 )
             )
 
-            # Фиксация всех изменений в базе данных
             await session.commit()
             print("Данные успешно записаны! 4 юзера, твиты, подписки и лайки на месте.")
 
         except Exception as e:
-            # Откат транзакции в случае возникновения любой ошибки
             print(f"Ошибка при заполнении: {e}")
             await session.rollback()
 
 
 if __name__ == "__main__":
-    # Запуск асинхронной функции сидирования
     asyncio.run(seed_data())

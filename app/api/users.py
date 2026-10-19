@@ -9,7 +9,6 @@ from app.api.deps import get_current_user, get_user_service
 from app.schemas import UserResponse, SuccessResponse
 from app.services.user_service import UserService
 
-# Инициализация роутера для управления пользователями
 router = APIRouter(prefix="/api/users", tags=["users"])
 
 

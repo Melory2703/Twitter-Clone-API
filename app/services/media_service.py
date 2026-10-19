@@ -16,7 +16,6 @@ from app.repositories.media_repository import MediaRepository
 
 logger = logging.getLogger(__name__)
 
-# Расширение, если у загруженного файла его нет или оно выглядит подозрительно
 DEFAULT_EXTENSION = ".bin"
 MAX_EXTENSION_LENGTH = 10
 
@@ -32,7 +31,6 @@ def _get_extension(filename: str | None) -> str:
 def _unlink_files(file_paths: Sequence[str]) -> None:
     """Удаляет файлы из UPLOAD_DIR по путям вида /static/media/<имя>; отсутствующие пропускает."""
     for file_path in file_paths:
-        # Берём только имя файла, чтобы путь из БД не мог выйти за пределы UPLOAD_DIR
         target = UPLOAD_DIR / Path(file_path).name
         try:
             target.unlink(missing_ok=True)

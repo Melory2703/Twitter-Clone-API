@@ -25,11 +25,9 @@ async def init_models():
         # await conn.run_sync(Base.metadata.drop_all)
 
         print("Создание таблиц...")
-        # Создание всех таблиц, зарегистрированных в Base.metadata
         await conn.run_sync(Base.metadata.create_all)
         print("Готово!")
 
 
 if __name__ == "__main__":
-    # Запуск асинхронного цикла событий для выполнения инициализации моделей
     asyncio.run(init_models())

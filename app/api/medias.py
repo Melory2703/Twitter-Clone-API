@@ -8,7 +8,6 @@ from app.models import User
 from app.api.deps import get_current_user, get_media_service
 from app.services.media_service import MediaService
 
-# Теги те же, что у твитов, чтобы описание в /docs не изменилось
 router = APIRouter(prefix="/api", tags=["tweets"])
 
 

@@ -96,7 +96,6 @@ class TweetService:
         file_paths = [media.file_path for media in tweet.attachments]
         await self.tweets.delete(tweet)
         await self.session.commit()
-        # Файлы удаляем только после успешного commit, иначе при откате получили бы записи без файлов
         await delete_media_files(file_paths)
 
     async def _get_medias_or_fail(self, media_ids: list[int]) -> Sequence[Media]:

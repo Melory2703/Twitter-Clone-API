@@ -50,16 +50,12 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     http_exc = StarletteHTTPException(status_code=exc.status_code, detail=exc.detail)
     return await custom_http_exception_handler(request, http_exc)
 
-
-# Каталог для медиафайлов должен существовать до монтирования /static
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-# Регистрация роутеров API
 app.include_router(users.router)
 app.include_router(tweets.router)
 app.include_router(medias.router)
 
-# Подключение статических файлов (CSS, JS, Изображения)
 app.mount("/css", StaticFiles(directory="dist/css"), name="css")
 app.mount("/js", StaticFiles(directory="dist/js"), name="js")
 app.mount("/static", StaticFiles(directory="static"), name="static")

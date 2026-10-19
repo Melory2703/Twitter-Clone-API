@@ -159,14 +159,12 @@ async def test_create_tweet_with_real_jpg(client: AsyncClient, test_user: User):
         client (AsyncClient): Тестовый клиент для отправки HTTP-запросов.
         test_user (User): Автор твита.
     """
-    # Подготовка тестового ресурса
     path = "tests/resources/test.jpg"
     if not os.path.exists(path):
         os.makedirs("tests/resources", exist_ok=True)
         with open(path, "wb") as f:
             f.write(b"fake_jpg_content_for_test")
 
-    # 1. Загрузка файла
     with open(path, "rb") as f:
         res_m = await client.post(
             "/api/medias",
@@ -176,7 +174,6 @@ async def test_create_tweet_with_real_jpg(client: AsyncClient, test_user: User):
     assert res_m.status_code in [200, 201]
     media_id = res_m.json()["media_id"]
 
-    # 2. Создание твита с media_id
     payload = {"tweet_data": "Tweet with real jpg", "tweet_media_ids": [media_id]}
     res_t = await client.post("/api/tweets", json=payload, headers={"api-key": "test"})
     assert res_t.status_code in [200, 201]
@@ -234,7 +231,6 @@ async def test_delete_tweet_permissions(
         test_user (User): Пользователь, пытающийся удалить чужой контент.
         second_user (User): Автор твита.
     """
-    # Создание твита вторым пользователем
     res_t = await client.post(
         "/api/tweets",
         json={"tweet_data": "Stranger's tweet", "tweet_media_ids": []},
@@ -242,7 +238,6 @@ async def test_delete_tweet_permissions(
     )
     t_id = res_t.json()["tweet_id"]
 
-    # Попытка удаления первым пользователем
     res_del = await client.delete(f"/api/tweets/{t_id}", headers={"api-key": "test"})
     assert res_del.status_code in [403, 404, 400]
 
@@ -273,16 +268,13 @@ async def test_like_logic_full(
         second_user (User): Пользователь, ставящий лайк.
         tweet_id (int): Идентификатор твита.
     """
-    # Поставить лайк
     await client.post(f"/api/tweets/{tweet_id}/likes", headers={"api-key": "test2"})
 
-    # Удалить лайк
     res_un = await client.delete(
         f"/api/tweets/{tweet_id}/likes", headers={"api-key": "test2"}
     )
     assert res_un.status_code == 200
 
-    # Лайк на несуществующий твит
     res_404 = await client.post("/api/tweets/99999/likes", headers={"api-key": "test"})
     assert res_404.status_code == 404
 

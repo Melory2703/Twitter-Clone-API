@@ -12,12 +12,9 @@ from app.main import app
 from app.core.database import Base, get_session
 from app.models import User, Tweet
 
-# URL для подключения к тестовой базе данных в памяти (SQLite)
 TEST_DATABASE_URL = "sqlite+aiosqlite:///file:testdb?mode=memory&cache=shared&uri=true"
 
-# Создание асинхронного движка для тестов
 engine_test = create_async_engine(TEST_DATABASE_URL)
-# Создание фабрики сессий для тестов
 async_session_test = async_sessionmaker(engine_test, expire_on_commit=False)
 
 
@@ -33,11 +30,9 @@ async def init_db():
         None: Фикстура выполняет подготовку окружения.
     """
     async with engine_test.begin() as conn:
-        # Создание всех таблиц
         await conn.run_sync(Base.metadata.create_all)
     yield
     async with engine_test.begin() as conn:
-        # Удаление всех таблиц после теста
         await conn.run_sync(Base.metadata.drop_all)
 
 
@@ -71,10 +66,8 @@ async def override_deps(db_session: AsyncSession):
     async def _override_get_session():
         yield db_session
 
-    # Переопределение зависимости в FastAPI приложении
     app.dependency_overrides[get_session] = _override_get_session
     yield
-    # Очистка переопределений после завершения теста
     app.dependency_overrides.clear()
 
 
@@ -143,7 +136,6 @@ async def tweet_id(db_session: AsyncSession, test_user: User):
     Returns:
         int: Идентификатор созданного твита.
     """
-    # Создаем твит, привязанный к автору
     tweet = Tweet(content="Test Tweet Content", author_id=test_user.id)
     db_session.add(tweet)
     await db_session.commit()

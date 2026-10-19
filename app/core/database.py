@@ -11,20 +11,14 @@ from sqlalchemy.orm import DeclarativeBase
 
 load_dotenv()
 
-# Загрузка URL базы данных из переменных окружения
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if DATABASE_URL is None:
     raise ValueError("Переменная окружения DATABASE_URL не установлена")
 
-# Создаем асинхронный "движок" (engine) для связи с базой.
-# Вывод SQL-запросов в консоль включается переменной DB_ECHO (true/1), по умолчанию выключен.
 DB_ECHO = os.getenv("DB_ECHO", "false").strip().lower() in ("true", "1")
 engine = create_async_engine(DATABASE_URL, echo=DB_ECHO)
 
-# Фабрика сессий.
-# expire_on_commit=False отключает автоматическое обновление объектов после коммита,
-# что критически важно для корректной работы асинхронности.
 async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
 
