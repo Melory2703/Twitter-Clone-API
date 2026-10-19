@@ -41,7 +41,7 @@
 │   │   ├── tweets.py           # Эндпоинты твитов: лента, создание, удаление, лайки
 │   │   └── medias.py           # Эндпоинт загрузки медиафайлов (POST /api/medias)
 │   ├── core/                   # Базовые настройки приложения
-│   │   ├── config.py           # Пути проекта (каталог static/media для загрузок)
+│   │   ├── config.py           # Пути проекта и лимиты загрузки (типы файлов, максимальный размер)
 │   │   ├── database.py         # Настройка SQLAlchemy: движок, сессии, Base, get_session
 │   │   └── exceptions.py       # Бизнес-исключения (400, 401, 404, 500), которые поднимают сервисы
 │   ├── repositories/           # Слой данных: все запросы SQLAlchemy, без commit
@@ -76,7 +76,7 @@
 │   └── __init__.py             # Позволяет импортировать модули внутри тестов
 │
 ├── Dockerfile                  # Инструкции для сборки Docker-образа приложения
-├── docker-compose.yml          # Описание всей инфраструктуры (App + DB + Nginx)
+├── docker-compose.yml          # Описание всей инфраструктуры (App + DB)
 │
 ├── requirements.txt            # Основной список зависимостей для работы
 ├── requirements-prod.txt       # Зависимости, оптимизированные для продакшена
@@ -110,18 +110,21 @@ POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=twitter_db
 DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/twitter_db
+DB_ECHO=false
 ```
+
+`DB_ECHO` — необязательная переменная: при значении `true` или `1` SQLAlchemy выводит все SQL-запросы в консоль (для отладки). По умолчанию (`false`, любое другое значение или переменная не задана) вывод выключен.
 
 ### 2. Запуск через Docker
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 > **Note:** Приложение доступно по адресу: **http://localhost:8000**  
 > Интерактивная документация: **http://localhost:8000/docs**
 
 ### 3. Наполнение базы тестовыми данными (по желанию)
 ```bash
-docker-compose exec web python -m app.scripts.seed_db
+docker compose exec web python -m app.scripts.seed_db
 ```
 
 ---
@@ -140,6 +143,9 @@ docker-compose exec web python -m app.scripts.seed_db
 | `POST` | `/api/medias` | Загрузить медиафайл (картинку) |
 | `POST` | `/api/tweets/{id}/likes` | Поставить лайк твиту |
 | `DELETE` | `/api/tweets/{id}/likes` | Убрать лайк |
+
+### Лимиты загрузки медиафайлов
+`POST /api/medias` принимает только изображения следующих типов (проверяется `Content-Type`): `image/jpeg`, `image/png`, `image/gif`, `image/webp`. Максимальный размер файла — **5 МБ**. При нарушении возвращается `400` с описанием ошибки. Если у имени файла нет расширения, файл сохраняется с расширением `.bin`. Лимиты заданы в `app/core/config.py` (`ALLOWED_MEDIA_TYPES`, `MAX_UPLOAD_SIZE`).
 
 ---
 
@@ -164,5 +170,6 @@ mypy app         # Проверка типов
 
 *   **Async/Await:** Полностью асинхронный стек.
 *   **Media Handling:** Автоматическая генерация уникальных имен (UUID4) для загружаемых файлов для защиты от перезаписи.
+*   **Upload Validation:** Проверка типа (jpeg, png, gif, webp) и размера (до 5 МБ) загружаемых файлов, проверка существования вложений при создании твита.
 *   **Data Integrity:** Использование внешних ключей и индексов в PostgreSQL для связей «подписчики» и «лайки».
 *   **Scalability:** Готовность к деплою через Docker-контейнеры.
