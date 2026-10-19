@@ -27,7 +27,6 @@ RUN groupadd -r -g 1000 appuser && \
 RUN mkdir -p /app/static/media /app/dist /app/app
 
 # 8. Копируем проект
-COPY dist /app/dist
 COPY . .
 
 # 9. НАСТРОЙКА ПРАВ

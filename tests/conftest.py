@@ -151,7 +151,7 @@ async def tweet_id(db_session: AsyncSession, test_user: User):
     return tweet.id
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def media_dir(tmp_path, monkeypatch):
     """
     Подменяет каталог загрузок на временный, чтобы тесты не оставляли файлы в static/media.

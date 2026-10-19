@@ -22,7 +22,6 @@ services:
     container_name: twitter_app
     volumes:
       - .:/app
-      - /app/static/media
       - static_media:/app/static/media
     ports:
       - "8000:8000"

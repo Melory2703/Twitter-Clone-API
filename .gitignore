@@ -22,6 +22,9 @@ htmlcov/
 static/media/*
 !static/media/.gitkeep
 
+# --- Файлы, которые тесты создают сами ---
+tests/resources/test.jpg
+
 # --- IDE и система ---
 .idea/
 .vscode/
