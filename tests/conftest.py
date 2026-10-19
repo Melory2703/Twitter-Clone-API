@@ -9,7 +9,7 @@ import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from app.main import app
-from app.database import Base, get_session
+from app.core.database import Base, get_session
 from app.models import User, Tweet
 
 # URL для подключения к тестовой базе данных в памяти (SQLite)

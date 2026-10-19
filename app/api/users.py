@@ -3,14 +3,11 @@
 Включает получение информации о профилях, а также функционал подписок и отписок.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy.orm import selectinload
-from app.database import get_session
+from fastapi import APIRouter, Depends
 from app.models import User
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_user_service
 from app.schemas import UserResponse, SuccessResponse
+from app.services.user_service import UserService
 
 # Инициализация роутера для управления пользователями
 router = APIRouter(prefix="/api/users", tags=["users"])
@@ -31,28 +28,20 @@ async def get_me(current_user: User = Depends(get_current_user)):
 
 
 @router.get("/{user_id}", response_model=UserResponse)
-async def get_user_profile(user_id: int, session: AsyncSession = Depends(get_session)):
+async def get_user_profile(
+    user_id: int, user_service: UserService = Depends(get_user_service)
+):
     """
     Получение информации о профиле конкретного пользователя по его ID.
 
     Args:
         user_id (int): Уникальный идентификатор запрашиваемого пользователя.
-        session (AsyncSession): Сессия базы данных для выполнения запроса.
+        user_service (UserService): Сервис пользователей.
 
     Returns:
         dict: JSON-ответ с полными данными профиля пользователя, включая подписки.
     """
-    query = (
-        select(User)
-        .where(User.id == user_id)
-        .options(selectinload(User.followers), selectinload(User.following))
-    )
-    res = await session.execute(query)
-    user = res.scalar_one_or_none()
-
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
+    user = await user_service.get_profile(user_id)
     return {"result": True, "user": user}
 
 
@@ -60,7 +49,7 @@ async def get_user_profile(user_id: int, session: AsyncSession = Depends(get_ses
 async def follow_user(
     user_id: int,
     current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
+    user_service: UserService = Depends(get_user_service),
 ):
     """
     Оформление подписки на другого пользователя.
@@ -68,25 +57,12 @@ async def follow_user(
     Args:
         user_id (int): ID пользователя, на которого необходимо подписаться.
         current_user (User): Текущий аутентифицированный пользователь (кто подписывается).
-        session (AsyncSession): Сессия базы данных.
+        user_service (UserService): Сервис пользователей.
 
     Returns:
         SuccessResponse: Ответ с результатом операции (True при успехе).
     """
-    if current_user.id == user_id:
-        raise HTTPException(status_code=400, detail="You cannot follow yourself")
-
-    query = select(User).where(User.id == user_id).options(selectinload(User.followers))
-    res = await session.execute(query)
-    target_user = res.scalar_one_or_none()
-
-    if not target_user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    if target_user not in current_user.following:
-        current_user.following.append(target_user)
-        await session.commit()
-
+    await user_service.follow(current_user, user_id)
     return {"result": True}
 
 
@@ -94,7 +70,7 @@ async def follow_user(
 async def unfollow_user(
     user_id: int,
     current_user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
+    user_service: UserService = Depends(get_user_service),
 ):
     """
     Отмена подписки на пользователя.
@@ -102,18 +78,10 @@ async def unfollow_user(
     Args:
         user_id (int): ID пользователя, от которого необходимо отписаться.
         current_user (User): Текущий аутентифицированный пользователь (кто отписывается).
-        session (AsyncSession): Сессия базы данных.
+        user_service (UserService): Сервис пользователей.
 
     Returns:
         SuccessResponse: Ответ с результатом операции.
     """
-    # Поиск пользователя в списке подписок текущего пользователя
-    target_user = next(
-        (followed for followed in current_user.following if followed.id == user_id),
-        None,
-    )
-    if target_user:
-        current_user.following.remove(target_user)
-        await session.commit()
-
+    await user_service.unfollow(current_user, user_id)
     return {"result": True}

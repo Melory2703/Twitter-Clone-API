@@ -1,9 +1,10 @@
-import os
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from app.api import users, tweets
+from app.api import users, tweets, medias
+from app.core.config import UPLOAD_DIR
+from app.core.exceptions import AppError
 
 app = FastAPI(title="Twitter Clone API")
 
@@ -33,14 +34,30 @@ async def custom_http_exception_handler(request: Request, exc: StarletteHTTPExce
     )
 
 
-# Настройка базовых путей для хранения медиафайлов
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-UPLOAD_DIR = os.path.join(BASE_DIR, "static", "media")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+@app.exception_handler(AppError)
+async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
+    """
+    Преобразует бизнес-исключения сервисов в тот же формат ответа,
+    что и обычные HTTP-ошибки: формат задаёт только custom_http_exception_handler.
+
+    Args:
+        request (Request): Объект текущего HTTP-запроса.
+        exc (AppError): Бизнес-исключение с кодом статуса и текстом ошибки.
+
+    Returns:
+        JSONResponse: JSON-ответ с полями result, error_type и error_message.
+    """
+    http_exc = StarletteHTTPException(status_code=exc.status_code, detail=exc.detail)
+    return await custom_http_exception_handler(request, http_exc)
+
+
+# Каталог для медиафайлов должен существовать до монтирования /static
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 # Регистрация роутеров API
 app.include_router(users.router)
 app.include_router(tweets.router)
+app.include_router(medias.router)
 
 # Подключение статических файлов (CSS, JS, Изображения)
 app.mount("/css", StaticFiles(directory="dist/css"), name="css")
