@@ -4,13 +4,17 @@
 """
 
 import asyncio
+import logging
 import uuid
+from collections.abc import Sequence
 from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import ALLOWED_MEDIA_TYPES, MAX_UPLOAD_SIZE, UPLOAD_DIR
 from app.core.exceptions import BadRequestError
 from app.models import Media
 from app.repositories.media_repository import MediaRepository
+
+logger = logging.getLogger(__name__)
 
 # Расширение, если у загруженного файла его нет или оно выглядит подозрительно
 DEFAULT_EXTENSION = ".bin"
@@ -23,6 +27,26 @@ def _get_extension(filename: str | None) -> str:
     if len(suffix) > MAX_EXTENSION_LENGTH or not suffix[1:].isalnum():
         return DEFAULT_EXTENSION
     return suffix
+
+
+def _unlink_files(file_paths: Sequence[str]) -> None:
+    """Удаляет файлы из UPLOAD_DIR по путям вида /static/media/<имя>; отсутствующие пропускает."""
+    for file_path in file_paths:
+        # Берём только имя файла, чтобы путь из БД не мог выйти за пределы UPLOAD_DIR
+        target = UPLOAD_DIR / Path(file_path).name
+        try:
+            target.unlink(missing_ok=True)
+        except OSError:
+            logger.exception("Failed to delete media file %s", target)
+
+
+async def delete_media_files(file_paths: Sequence[str]) -> None:
+    """
+    Удаляет файлы медиа с диска, не блокируя event loop.
+    Отсутствующий файл не считается ошибкой; прочие ошибки ФС только логируются,
+    так как к этому моменту изменения в БД уже зафиксированы.
+    """
+    await asyncio.to_thread(_unlink_files, file_paths)
 
 
 class MediaService:

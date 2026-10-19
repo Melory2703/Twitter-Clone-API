@@ -3,6 +3,7 @@
 Транзакцией (commit) управляет сервис.
 """
 
+from collections.abc import Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Media
@@ -21,9 +22,13 @@ class MediaRepository:
         await self.session.flush()
         return media
 
-    async def attach_to_tweet(self, media_ids: list[int], tweet_id: int) -> None:
-        """Привязывает существующие медиа с указанными ID к твиту (несуществующие ID пропускаются)."""
+    async def get_by_ids(self, media_ids: Sequence[int]) -> Sequence[Media]:
+        """Возвращает существующие медиа с указанными ID (несуществующие в результат не попадают)."""
         query = select(Media).where(Media.id.in_(media_ids))
         result = await self.session.execute(query)
-        for media in result.scalars().all():
+        return result.scalars().all()
+
+    async def attach_to_tweet(self, medias: Sequence[Media], tweet_id: int) -> None:
+        """Привязывает переданные медиа к твиту."""
+        for media in medias:
             media.tweet_id = tweet_id

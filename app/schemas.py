@@ -4,7 +4,7 @@
 """
 
 from typing import List, Optional
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class UserShortSchema(BaseModel):
@@ -79,7 +79,7 @@ class TweetCreateSchema(BaseModel):
     """
 
     tweet_data: str
-    tweet_media_ids: Optional[List[int]] = []
+    tweet_media_ids: Optional[List[int]] = Field(default_factory=list)
 
 
 class SuccessResponse(BaseModel):

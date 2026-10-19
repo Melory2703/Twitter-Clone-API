@@ -3,12 +3,18 @@
 Содержит бизнес-правила и управляет транзакцией (commit).
 """
 
+import logging
+from collections.abc import Sequence
 from typing import Any
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.exceptions import DatabaseError, NotFoundError
-from app.models import Tweet, User
+from app.core.exceptions import BadRequestError, DatabaseError, NotFoundError
+from app.models import Media, Tweet, User
 from app.repositories.media_repository import MediaRepository
 from app.repositories.tweet_repository import TweetRepository
+from app.services.media_service import delete_media_files
+
+logger = logging.getLogger(__name__)
 
 
 def format_tweet(tweet: Tweet) -> dict[str, Any]:
@@ -42,19 +48,19 @@ class TweetService:
 
         try:
             tweets = await self.tweets.get_feed(author_ids)
-        except Exception as error:
-            print(f"Error in GET /tweets database execution: {error}")
-            raise DatabaseError("Database error")
+        except SQLAlchemyError as error:
+            logger.exception("Error in GET /tweets database execution")
+            raise DatabaseError("Database error") from error
 
         return [format_tweet(tweet) for tweet in tweets]
 
     async def create(
         self, current_user: User, content: str, media_ids: list[int]
     ) -> Tweet:
-        """Создаёт твит и привязывает к нему загруженные ранее медиа."""
+        """Создаёт твит и привязывает к нему загруженные ранее медиа; неизвестный ID медиа - BadRequestError."""
+        medias = await self._get_medias_or_fail(media_ids)
         tweet = await self.tweets.create(content, current_user.id)
-        if media_ids:
-            await self.medias.attach_to_tweet(media_ids, tweet.id)
+        await self.medias.attach_to_tweet(medias, tweet.id)
         await self.session.commit()
         return tweet
 
@@ -87,5 +93,19 @@ class TweetService:
         if not tweet:
             raise NotFoundError("Tweet not found or access denied")
 
+        file_paths = [media.file_path for media in tweet.attachments]
         await self.tweets.delete(tweet)
         await self.session.commit()
+        # Файлы удаляем только после успешного commit, иначе при откате получили бы записи без файлов
+        await delete_media_files(file_paths)
+
+    async def _get_medias_or_fail(self, media_ids: list[int]) -> Sequence[Media]:
+        """Возвращает медиа по ID; если какого-то нет в БД, поднимает BadRequestError со списком ID."""
+        if not media_ids:
+            return []
+        medias = await self.medias.get_by_ids(media_ids)
+        missing = set(media_ids) - {media.id for media in medias}
+        if missing:
+            missing_ids = ", ".join(str(media_id) for media_id in sorted(missing))
+            raise BadRequestError(f"Media not found: {missing_ids}")
+        return medias
